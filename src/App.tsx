@@ -37,11 +37,19 @@ function App() {
     return `${m}/${y.substring(2)}`;
   };
 
+  const getStandardName = () => {
+    if (config.portfolioView.startsWith('Growth')) return '100% Balanced';
+    if (config.portfolioView.startsWith('Balanced')) return '100% Conservative';
+    return '100% Cash Option';
+  };
+  const standardName = getStandardName();
+
   // Chart Data preparation
   const chartData = result.rows.map(row => ({
     date: row.date,
     rpTotal: Math.max(0, row.rpTotal),
     bmTotal: Math.max(0, row.bmTotal),
+    stdTotal: Math.max(0, row.stdTotal),
     rpCpiWeight: row.rpCpiWeight * 100,
     rpIncome: row.rpCumulativeIncome,
     rpRebalanceEvent: row.rpRebalanceTriggered ? row.rpCpiWeight * 100 : null
@@ -138,7 +146,7 @@ function App() {
               <span className="metric-title">Ending Balance</span>
               <DollarSign size={18} color="var(--text-muted)" />
             </div>
-            <div className="metric-grid">
+            <div className="metric-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
               <div className="metric-val-container">
                 <span className="metric-val-label">Retirement Port</span>
                 <span className="metric-val val-rp">{formatCurrency(metrics.rpEndingBalance)}</span>
@@ -146,6 +154,10 @@ function App() {
               <div className="metric-val-container">
                 <span className="metric-val-label">80/20 Benchmark</span>
                 <span className="metric-val val-bm">{formatCurrency(metrics.bmEndingBalance)}</span>
+              </div>
+              <div className="metric-val-container">
+                <span className="metric-val-label">{standardName}</span>
+                <span className="metric-val val-std" style={{ color: 'var(--growth-color)' }}>{formatCurrency(metrics.stdEndingBalance)}</span>
               </div>
             </div>
           </div>
@@ -155,7 +167,7 @@ function App() {
               <span className="metric-title">Max Drawdown</span>
               <TrendingUp size={18} color="var(--text-muted)" style={{ transform: 'scaleY(-1)' }} />
             </div>
-            <div className="metric-grid">
+            <div className="metric-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
               <div className="metric-val-container">
                 <span className="metric-val-label">Retirement Port</span>
                 <span className="metric-val val-rp">{formatPercent(metrics.rpMaxDrawdown)}</span>
@@ -163,6 +175,10 @@ function App() {
               <div className="metric-val-container">
                 <span className="metric-val-label">80/20 Benchmark</span>
                 <span className="metric-val val-bm">{formatPercent(metrics.bmMaxDrawdown)}</span>
+              </div>
+              <div className="metric-val-container">
+                <span className="metric-val-label">{standardName}</span>
+                <span className="metric-val val-std" style={{ color: 'var(--growth-color)' }}>{formatPercent(metrics.stdMaxDrawdown)}</span>
               </div>
             </div>
           </div>
@@ -172,7 +188,7 @@ function App() {
               <span className="metric-title">Total Return (CAGR)</span>
               <Activity size={18} color="var(--text-muted)" />
             </div>
-            <div className="metric-grid">
+            <div className="metric-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
               <div className="metric-val-container">
                 <span className="metric-val-label">Retirement Port</span>
                 <span className="metric-val val-rp">{formatPercent(metrics.rpCagr)}</span>
@@ -180,6 +196,10 @@ function App() {
               <div className="metric-val-container">
                 <span className="metric-val-label">80/20 Benchmark</span>
                 <span className="metric-val val-bm">{formatPercent(metrics.bmCagr)}</span>
+              </div>
+              <div className="metric-val-container">
+                <span className="metric-val-label">{standardName}</span>
+                <span className="metric-val val-std" style={{ color: 'var(--growth-color)' }}>{formatPercent(metrics.stdCagr)}</span>
               </div>
             </div>
           </div>
@@ -214,6 +234,7 @@ function App() {
               <div className="chart-legend">
                 <div className="legend-item"><div className="legend-color" style={{ background: 'var(--rp-color)' }}></div>Retirement Portfolio</div>
                 <div className="legend-item"><div className="legend-color" style={{ background: 'var(--bm-color)' }}></div>80/20 Benchmark</div>
+                <div className="legend-item"><div className="legend-color" style={{ background: 'var(--growth-color)' }}></div>{standardName}</div>
               </div>
             </div>
             <div className="chart-wrapper">
@@ -237,6 +258,7 @@ function App() {
                     labelFormatter={(label) => `Date: ${label}`}
                   />
                   <Area type="monotone" dataKey="bmTotal" name="80/20 Benchmark" stroke="var(--bm-color)" fillOpacity={1} fill="url(#colorBm)" />
+                  <Area type="monotone" dataKey="stdTotal" name={standardName} stroke="var(--growth-color)" strokeWidth={2} strokeDasharray="5 5" fillOpacity={0} />
                   <Area type="monotone" dataKey="rpTotal" name="Retirement Portfolio" stroke="var(--rp-color)" strokeWidth={2} fillOpacity={1} fill="url(#colorRp)" />
                 </AreaChart>
               </ResponsiveContainer>

@@ -19,6 +19,14 @@ export interface PerformanceMetrics {
     rpRebalanceCount: number;
     rpEndingBalance: number;
     bmEndingBalance: number;
+    stdTotalReturn: number;
+    stdCagr: number;
+    stdVolatility: number;
+    stdMaxDrawdown: number;
+    stdSharpeRatio: number;
+    stdTotalIncome: number;
+    stdEndingBalance: number;
+    stdIncomeDurationMonths: number;
 }
 
 function calculateAnnualizedVolatility(rows: SimResultRow[], getVal: (r: SimResultRow) => number): number {
@@ -47,25 +55,30 @@ export function calculateMetrics(result: SimulationResult, config: SimConfig): P
     // Total Return
     const rpTotalReturn = startBal > 0 ? (finale.rpEndingBalance + finale.rpTotalIncome) / startBal - 1 : 0;
     const bmTotalReturn = startBal > 0 ? (finale.bmEndingBalance + finale.bmTotalIncome) / startBal - 1 : 0;
+    const stdTotalReturn = startBal > 0 ? (finale.stdEndingBalance + finale.stdTotalIncome) / startBal - 1 : 0;
 
     // CAGR
     const nYears = rows.length / 12;
     const rpCagr = startBal > 0 && nYears > 0 ? Math.pow(finale.rpEndingBalance / startBal, 1 / nYears) - 1 : 0;
     const bmCagr = startBal > 0 && nYears > 0 ? Math.pow(finale.bmEndingBalance / startBal, 1 / nYears) - 1 : 0;
+    const stdCagr = startBal > 0 && nYears > 0 ? Math.pow(finale.stdEndingBalance / startBal, 1 / nYears) - 1 : 0;
 
     // Volatility
     const rpVolatility = calculateAnnualizedVolatility(rows, r => r.rpTotal);
     const bmVolatility = calculateAnnualizedVolatility(rows, r => r.bmTotal);
+    const stdVolatility = calculateAnnualizedVolatility(rows, r => r.stdTotal);
 
     // Max Drawdown
     const rpMaxDrawdown = Math.min(0, ...rows.map(r => r.rpDrawdown));
     const bmMaxDrawdown = Math.min(0, ...rows.map(r => r.bmDrawdown));
+    const stdMaxDrawdown = Math.min(0, ...rows.map(r => r.stdDrawdown));
 
     // Risk Free Rate assumption for Sharpe
     const riskFreeRate = 0.02; // 2% 
 
     const rpSharpeRatio = rpVolatility > 0 ? (rpCagr - riskFreeRate) / rpVolatility : 0;
     const bmSharpeRatio = bmVolatility > 0 ? (bmCagr - riskFreeRate) / bmVolatility : 0;
+    const stdSharpeRatio = stdVolatility > 0 ? (stdCagr - riskFreeRate) / stdVolatility : 0;
 
     // Income Duration
     const rpFirstDepletedIdx = rows.findIndex(r => r.rpCpiDepleted);
@@ -75,23 +88,35 @@ export function calculateMetrics(result: SimulationResult, config: SimConfig): P
     const bmFirstDepletedIdx = rows.findIndex(r => r.bmTotal <= 0);
     const bmIncomeDurationMonths = bmFirstDepletedIdx >= 0 ? bmFirstDepletedIdx : rows.length;
 
+    // Standard duration
+    const stdFirstDepletedIdx = rows.findIndex(r => r.stdTotal <= 0);
+    const stdIncomeDurationMonths = stdFirstDepletedIdx >= 0 ? stdFirstDepletedIdx : rows.length;
+
     return {
         rpTotalReturn,
         bmTotalReturn,
+        stdTotalReturn,
         rpCagr,
         bmCagr,
+        stdCagr,
         rpVolatility,
         bmVolatility,
+        stdVolatility,
         rpMaxDrawdown,
         bmMaxDrawdown,
+        stdMaxDrawdown,
         rpSharpeRatio,
         bmSharpeRatio,
+        stdSharpeRatio,
         rpTotalIncome: finale.rpTotalIncome,
         bmTotalIncome: finale.bmTotalIncome,
+        stdTotalIncome: finale.stdTotalIncome,
         rpIncomeDurationMonths,
         bmIncomeDurationMonths,
+        stdIncomeDurationMonths,
         rpRebalanceCount: finale.rpRebalanceCount,
         rpEndingBalance: finale.rpEndingBalance,
-        bmEndingBalance: finale.bmEndingBalance
+        bmEndingBalance: finale.bmEndingBalance,
+        stdEndingBalance: finale.stdEndingBalance
     };
 }

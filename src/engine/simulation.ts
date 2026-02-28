@@ -31,6 +31,12 @@ export interface SimResultRow {
     bmIncomePaid: number;
     bmCumulativeIncome: number;
     bmDrawdown: number;
+
+    // Standard Portfolio
+    stdTotal: number;
+    stdIncomePaid: number;
+    stdCumulativeIncome: number;
+    stdDrawdown: number;
 }
 
 export interface SimulationResult {
@@ -38,8 +44,10 @@ export interface SimulationResult {
     finale: {
         rpEndingBalance: number;
         bmEndingBalance: number;
+        stdEndingBalance: number;
         rpTotalIncome: number;
         bmTotalIncome: number;
+        stdTotalIncome: number;
         rpRebalanceCount: number;
     };
 }
@@ -74,6 +82,12 @@ export function runSimulation(data: ProxyReturns[], config: SimConfig): Simulati
     let bmCumIncome = 0;
     let bmPeak = config.startingBalance;
 
+    // Initialize STD
+    let stdTotal = config.startingBalance;
+    let stdAnnualPayment = config.startingBalance * config.drawdownRate;
+    let stdCumIncome = 0;
+    let stdPeak = config.startingBalance;
+
     for (let i = 0; i < filteredData.length; i++) {
         const row = filteredData[i];
         const monthIndex = parseInt(row.date.split('-')[1], 10); // 1 to 12
@@ -82,9 +96,18 @@ export function runSimulation(data: ProxyReturns[], config: SimConfig): Simulati
 
         // Determine the growth return depending on portfolio view
         let growthReturn = 0;
-        if (config.portfolioView === 'Growth 80/20') growthReturn = row.growth;
-        else if (config.portfolioView === 'Balanced 80/20') growthReturn = row.balanced;
-        else growthReturn = row.conservative;
+        let stdReturn = 0;
+
+        if (config.portfolioView === 'Growth 80/20') {
+            growthReturn = row.growth;
+            stdReturn = row.balanced;
+        } else if (config.portfolioView === 'Balanced 80/20') {
+            growthReturn = row.balanced;
+            stdReturn = row.conservative;
+        } else {
+            growthReturn = row.conservative;
+            stdReturn = row.cashRate; // Default to cash for Conservative 80/20 standard comparison
+        }
 
         // In the build_model.py Excel generator, spread is hardcoded into the data series
         // and the config parameter is strangely ignored. So we just use the data value.
@@ -176,6 +199,20 @@ export function runSimulation(data: ProxyReturns[], config: SimConfig): Simulati
         bmCumIncome += bmMonthlyPayment;
 
         // ==========================================
+        // STANDARD SIMULATION
+        // ==========================================
+        let stdTotalPre = stdTotal * (1 + stdReturn);
+        if (isJuly && config.drawdownRecalculation === 'Annual') {
+            stdAnnualPayment = stdTotalPre * config.drawdownRate;
+        }
+        const stdMonthlyPayment = stdAnnualPayment / 12;
+
+        stdTotal = Math.max(0, stdTotalPre - stdMonthlyPayment);
+        stdPeak = Math.max(stdPeak, stdTotal);
+        let stdDrawdown = stdTotal > 0 ? (stdTotal / stdPeak) - 1 : -1;
+        stdCumIncome += stdMonthlyPayment;
+
+        // ==========================================
         // RECORD ROW
         // ==========================================
         results.push({
@@ -195,7 +232,12 @@ export function runSimulation(data: ProxyReturns[], config: SimConfig): Simulati
             bmCashValue: bmCash,
             bmIncomePaid: bmMonthlyPayment,
             bmCumulativeIncome: bmCumIncome,
-            bmDrawdown
+            bmDrawdown,
+
+            stdTotal,
+            stdIncomePaid: stdMonthlyPayment,
+            stdCumulativeIncome: stdCumIncome,
+            stdDrawdown
         });
     }
 
@@ -204,8 +246,10 @@ export function runSimulation(data: ProxyReturns[], config: SimConfig): Simulati
         finale: {
             rpEndingBalance: rpGrowth + rpCpi,
             bmEndingBalance: bmGrowth + bmCash,
+            stdEndingBalance: stdTotal,
             rpTotalIncome: rpCumIncome,
             bmTotalIncome: bmCumIncome,
+            stdTotalIncome: stdCumIncome,
             rpRebalanceCount
         }
     };
