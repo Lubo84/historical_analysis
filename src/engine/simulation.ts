@@ -106,7 +106,7 @@ export function runSimulation(data: ProxyReturns[], config: SimConfig): Simulati
             stdReturn = row.conservative;
         } else {
             growthReturn = row.conservative;
-            stdReturn = row.cashRate; // Default to cash for Conservative 80/20 standard comparison
+            stdReturn = row.cpiPlus; // Default to CPIplus for Conservative 80/20 standard comparison
         }
 
         // In the build_model.py Excel generator, spread is hardcoded into the data series

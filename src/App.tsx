@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine } from 'recharts';
-import { Activity, TrendingUp, ShieldAlert, DollarSign, RefreshCw, BarChart2, Info, X } from 'lucide-react';
+import { Activity, TrendingUp, ShieldAlert, DollarSign, RefreshCw, BarChart2 } from 'lucide-react';
 import { historicalData } from './engine/data';
 import { runSimulation, SimConfig } from './engine/simulation';
 import { calculateMetrics } from './engine/metrics';
@@ -17,7 +17,6 @@ function App() {
     lowerThreshold: 0.18,
     upperThreshold: 0.23
   });
-  const [showInfoModal, setShowInfoModal] = useState(false);
 
   const handleConfigChange = (key: keyof SimConfig, value: any) => {
     setConfig(prev => ({ ...prev, [key]: value }));
@@ -40,7 +39,7 @@ function App() {
   const getStandardName = () => {
     if (config.portfolioView.startsWith('Growth')) return '100% Balanced';
     if (config.portfolioView.startsWith('Balanced')) return '100% Conservative';
-    return '100% Cash Option';
+    return '100% CPIplus';
   };
   const standardName = getStandardName();
 
@@ -63,9 +62,6 @@ function App() {
           <ShieldAlert color="var(--text-accent)" size={28} />
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             Retirement Portfolios
-            <button className="icon-btn" onClick={() => setShowInfoModal(true)} title="How It Works">
-              <Info size={18} color="var(--text-muted)" />
-            </button>
           </h1>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px' }}>Interactive Back-test Engine</p>
@@ -97,7 +93,7 @@ function App() {
         <div className="config-group">
           <label className="config-label">Market Scenario</label>
           <select value={config.scenario} onChange={e => handleConfigChange('scenario', e.target.value)}>
-            <option value="Full Period">Full Period (2000-2024)</option>
+            <option value="Full Period">Full Period (2001-2024)</option>
             <option value="GFC">Global Financial Crisis (2007-2012)</option>
             <option value="COVID">COVID-19 Crash & Recovery (2019-2022)</option>
             <option value="Rising Rates">Rising Rates / Inflation (2022-2024)</option>
@@ -252,7 +248,7 @@ function App() {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="date" tickFormatter={formatDate} minTickGap={30} />
-                  <YAxis tickFormatter={(val) => `$${val / 1000}k`} width={60} domain={['dataMin - 10000', 'dataMax + 10000']} />
+                  <YAxis tickFormatter={(val) => `$${Math.round(val / 1000)}k`} width={60} domain={['auto', 'auto']} />
                   <Tooltip
                     formatter={(val: any) => formatCurrency(Number(val))}
                     labelFormatter={(label) => `Date: ${label}`}
@@ -274,7 +270,7 @@ function App() {
                 <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="date" tickFormatter={formatDate} minTickGap={40} />
-                  <YAxis tickFormatter={(val) => `${val}%`} domain={[0, 'dataMax + 5']} />
+                  <YAxis tickFormatter={(val) => `${Math.round(val)}%`} domain={[0, 'auto']} />
                   <Tooltip formatter={(val: any) => formatPercent(Number(val) / 100)} />
                   <ReferenceLine y={config.lowerThreshold * 100} stroke="var(--bm-color)" strokeDasharray="3 3" />
                   <ReferenceLine y={config.upperThreshold * 100} stroke="var(--cpi-color)" strokeDasharray="3 3" />
@@ -299,7 +295,7 @@ function App() {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="date" tickFormatter={formatDate} minTickGap={40} />
-                  <YAxis tickFormatter={(val) => `$${val / 1000}k`} width={50} />
+                  <YAxis tickFormatter={(val) => `$${Math.round(val / 1000)}k`} width={50} domain={[0, 'auto']} />
                   <Tooltip formatter={(val: any) => formatCurrency(Number(val))} />
                   <Area type="monotone" dataKey="rpIncome" name="Income Drawn" stroke="var(--cpi-color)" strokeWidth={2} fillOpacity={1} fill="url(#colorInc)" />
                 </AreaChart>
@@ -309,53 +305,6 @@ function App() {
 
         </div>
       </div>
-
-      {/* INFO MODAL */}
-      {showInfoModal && (
-        <div className="modal-overlay" onClick={() => setShowInfoModal(false)}>
-          <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowInfoModal(false)}><X size={20} /></button>
-            <h2>How It Works</h2>
-
-            <h3>The Core Concept</h3>
-            <p>
-              The Hostplus Retirement Portfolio provides a reliable income stream while protecting your savings from a falling market. It does this by splitting your money into two distinct "buckets".
-            </p>
-
-            <ul>
-              <li><strong>The Growth Bucket (80%):</strong> Invested in the broader market to generate long-term returns.</li>
-              <li><strong>The CPIplus Bucket (20%):</strong> A defensive cash-like reserve targeted to beat inflation (CPI + 2.5%).</li>
-            </ul>
-
-            <h3>The Monthly Waterfall</h3>
-            <p>
-              Every month, your pension payment is drawn <strong>exclusively</strong> from the CPIplus defensive bucket. This protects your Growth bucket from being sold off during market downturns (Sequence of Return Risk).
-            </p>
-            <p>
-              The system relies on rules-based rebalancing to ensure the CPIplus bucket never runs out, preventing you from ever having to sell Growth assets at a loss to fund your pension.
-            </p>
-
-            <h3>The Asymmetric Rebalance</h3>
-            <p>
-              The portfolio automatically checks the percentage weight of your CPIplus bucket every quarter (March, June, Sept, Dec).
-            </p>
-            <ul>
-              <li><strong>Upper Threshold (23%):</strong> During market corrections, the value of the Growth bucket may decrease, which naturally increases the proportional weight of the stable CPIplus bucket. If the CPIplus weight exceeds 23% of the total portfolio, the system rebalances by transferring the excess value back into the Growth bucket to return to the target allocation.</li>
-              <li><strong>Lower Threshold (18%):</strong> During strong bull markets, your Growth bucket expands rapidly, causing the proportional weight of CPIplus to shrink. If it drops below 18%, the portfolio sells some Growth assets to top the CPIplus bucket back up to 20%, explicitly locking in your market gains to fund future pension payments.</li>
-            </ul>
-
-            <h3>The 80/20 Benchmark Comparison</h3>
-            <p>
-              To demonstrate the value of this strategy, the application compares the Retirement Portfolio against a standard 80/20 Benchmark.
-            </p>
-            <ul>
-              <li><strong>Asset Mix:</strong> Like the Retirement Portfolio, it holds a constant 80% in Growth assets and 20% in defensive assets. However, the defensive 20% is held in a standard Cash rate rather than CPIplus.</li>
-              <li><strong>Pro-Rata Drawdowns:</strong> Unlike the Retirement Portfolio which protects Growth assets by drawing only from CPIplus, the Benchmark draws pension payments proportionally (80% from Growth, 20% from Cash) every single month, forcing the sale of Growth assets even during severe market crashes.</li>
-              <li><strong>Consistent Rebalancing:</strong> For a fair risk comparison, the Benchmark rebalances back to its strict 80/20 target every single month.</li>
-            </ul>
-          </div>
-        </div>
-      )}
 
     </div>
   );
